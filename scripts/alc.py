@@ -26,6 +26,7 @@ import numpy as np
 from alchemie import contrib
 from breze.learn.utils import JsonForgivingEncoder
 from breze.learn.base import UnsupervisedBrezeWrapperBase
+from cPickle import PickleError
 
 
 def load_module(m):
@@ -89,12 +90,12 @@ def run(args, mod):
     print '>>> making report'
     report = mod.make_report(pars, trainer, data)
 
-    print '>>> saving to checkpoint'
-    idx = contrib.to_checkpoint('.', trainer)
-
     fn = 'report-last.json' if trainer.stopped else 'report-%i.json' % idx
     with open(fn, 'w') as fp:
         json.dump(report, fp, cls=JsonForgivingEncoder)
+
+    print '>>> saving to checkpoint'
+    idx = contrib.to_checkpoint('.', trainer)
 
     return 0 if trainer.stopped else 9
 
@@ -114,10 +115,13 @@ def evaluate(args):
         if cps:
             print '>>> checking %s' %sub_dir
 	    with gzip.open(cps[-1], 'rb') as fp:
-                trainer = cPickle.load(fp)
-                if trainer.best_loss < best_loss:
-                    best_loss = trainer.best_loss
-                    best_exp = sub_dir
+                try:
+			trainer = cPickle.load(fp)
+                	if trainer.best_loss < best_loss:
+                    		best_loss = trainer.best_loss
+                    		best_exp = sub_dir
+		except:
+			print '>>> detected corrupted checkpoint'
 
     r_string = '>>> found the best experiment in\n>>> %s\n>>> with a validation loss of %f' %(best_exp, best_loss)
     print r_string
